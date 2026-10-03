@@ -1,0 +1,74 @@
+[
+ {
+  "field_id": "JAH-FIXFIELD-001",
+  "name": "Electrical",
+  "count": 16,
+  "pro": "licensed electrician"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-002",
+  "name": "Appliances",
+  "count": 16,
+  "pro": "appliance repair technician"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-003",
+  "name": "Heating & Cooling",
+  "count": 14,
+  "pro": "HVAC technician"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-004",
+  "name": "Automotive",
+  "count": 16,
+  "pro": "certified mechanic"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-005",
+  "name": "Computers & Cyber",
+  "count": 18,
+  "pro": "computer repair shop"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-006",
+  "name": "Phones & Tablets",
+  "count": 14,
+  "pro": "phone repair shop"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-007",
+  "name": "Vintage Electronics",
+  "count": 14,
+  "pro": "vintage electronics specialist"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-008",
+  "name": "Chips & Circuit Boards",
+  "count": 12,
+  "pro": "electronics repair specialist"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-009",
+  "name": "Home Repair",
+  "count": 18,
+  "pro": "handyman or contractor"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-010",
+  "name": "Small Engines & Tools",
+  "count": 12,
+  "pro": "small engine repair shop"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-011",
+  "name": "Lawn & Outdoor",
+  "count": 12,
+  "pro": "outdoor equipment dealer"
+ },
+ {
+  "field_id": "JAH-FIXFIELD-012",
+  "name": "Plumbing",
+  "count": 16,
+  "pro": "licensed plumber"
+ }
+]

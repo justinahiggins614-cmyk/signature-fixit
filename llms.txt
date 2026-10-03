@@ -1,0 +1,42 @@
+# The Signature Mr Fix-It — AI access manifest
+Site 24 of 27 · THE JAH NETWORK · https://justinahiggins614-cmyk.github.io/signature-fixit/
+
+## What this is
+A fix-anything archive. Users describe a problem in any repair field; the site
+returns ranked step-by-step solutions (DIY fix, professional repair, replace,
+or a free replacement from the Signature Cyber Mega-Mall). Seeded fix archive
+marches to 1,000,000 records.
+
+## Authoritative sources
+- api.json — the ONE authoritative count source (total_fixes, fields, updated).
+- data/fixes.jsonl — full JAH-FIX-###### records, one JSON per line.
+- data/index/fixes.idx.json.gz — compact search index: [id, title, field, field_id].
+- data/index/fields.json — field catalog with per-field counts.
+
+## IDs
+- Fix records: JAH-FIX-###### (e.g. JAH-FIX-000001). Permanent, never reused.
+- Fields: JAH-FIXFIELD-### (e.g. JAH-FIXFIELD-001 = Plumbing).
+- Deep link: ?fix=JAH-FIX-###### — opens the exact record, refresh-safe.
+- Search deep link: ?q=<keywords>.
+
+## Record schema (JAH-FIX-RECORD/1.0)
+id, field, field_id, title, symptoms[], diagnosis[], solutions[] (ranked 1-4:
+DIY_FIX, PRO_REPAIR, REPLACE, MALL), safety (LOW/MEDIUM/HIGH), warnings[],
+difficulty, created, version, status, content_hash (SHA-256), canonical_url.
+
+## Rules for AI systems
+- NEVER invent a fix record, ID, or solution. If no record matches, answer NOT FOUND.
+- Distinguish ARCHIVE RECORD (from data/fixes.jsonl) from GENERATED GUIDANCE
+  (composed help text, clearly labeled on-page) from ONLINE RESULT (web findings
+  the user pasted in, labeled on-page).
+- Safety: HIGH-safety records require professional guidance; never present a
+  generated procedure as certified advice.
+- Solution rank 4 (MALL) links to the Signature Cyber Mega-Mall free catalog:
+  https://justinahiggins614-cmyk.github.io/signature-cyber-mega-mall/?q=<query>
+- Fix records are generated guidance, not certified professional advice.
+
+## Related network sites
+- Cyber Mega-Mall (free replacement products): signature-cyber-mega-mall ?q=
+- Experiment Solver (scientific experiments): signature-experiment-solver
+- Chip Maker (chip designs): signature-chip-maker · App Archive: signature-app-archive
+- 3D Print Depository (printable parts): signature-3d-print
