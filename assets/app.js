@@ -10,7 +10,9 @@ var myUpFile=null;
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function tokens(s){return (s||"").toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(function(w){return w.length>2;});}
-function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||"null");localStorage.setItem(k,JSON.stringify(v));}catch(e){return null;}}
+function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||"null");localStorage.setItem(k,JSON.stringify(v));}
+catch(e){if(e&&/QuotaExceeded/i.test(e.name||"")){window.STORE_FULL=true;showStoreWarn();}return null;}}
+function showStoreWarn(){var w=$("storeWarn");if(w)w.classList.remove("hidden");}
 function dl(name,text,type){var b=new Blob([text],{type:type||"text/plain"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},800);}
 
 /* ---------- theme ---------- */
@@ -187,18 +189,35 @@ function badges(rec){
 }
 
 /* ---------- finder ---------- */
+/* ---------- upload validation: human-readable, never silent ---------- */
+var MAX_UPLOAD_MB=100;
+function validateUpload(f){
+  if(!f)return{ok:false,msg:"No file was chosen."};
+  var mb=f.size/1048576;
+  if(f.size>MAX_UPLOAD_MB*1048576)
+    return{ok:false,msg:"That file is "+mb.toFixed(0)+" MB — too large to preview on this device (limit "+MAX_UPLOAD_MB+" MB). Try a shorter video or a smaller photo."};
+  var t=f.type||"";
+  if(t&&t.indexOf("image/")!==0&&t.indexOf("video/")!==0)
+    return{ok:false,msg:"“"+f.name+"” isn't a photo or video ("+(t||"unknown type")+") — only image and video files can be attached."};
+  return{ok:true,msg:""};
+}
 $("upFile").addEventListener("change",function(e){
-  var f=e.target.files[0];myUpFile=f||null;
+  var f=e.target.files[0];myUpFile=null;
   var st=$("upStatus"),pv=$("upPreview");pv.innerHTML="";
   if(!f){st.textContent="No file attached.";return;}
+  var chk=validateUpload(f);
+  if(!chk.ok){st.textContent="⚠ "+chk.msg;$("upFile").value="";return;}
+  myUpFile=f;
   var mb=(f.size/1048576).toFixed(1);
-  st.textContent="Attached: "+f.name+" · "+f.type+" · "+mb+" MB — stored on your device only, never uploaded.";
-  if(f.type.indexOf("image/")===0){var im=document.createElement("img");im.style.maxWidth="100%";im.style.borderRadius="8px";im.alt="Uploaded problem photo";im.src=URL.createObjectURL(f);pv.appendChild(im);}
-  else if(f.type.indexOf("video/")===0){var v=document.createElement("video");v.style.maxWidth="100%";v.controls=true;v.src=URL.createObjectURL(f);pv.appendChild(v);}
+  st.textContent="Attached: "+f.name+" · "+(f.type||"file")+" · "+mb+" MB — stored on your device only, never uploaded.";
+  function badPrev(){st.textContent="⚠ That file looks damaged — the preview couldn't load it. The file may be corrupted; try a different photo or video.";pv.innerHTML="";myUpFile=null;$("upFile").value="";}
+  if(f.type.indexOf("image/")===0){var im=document.createElement("img");im.style.maxWidth="100%";im.style.borderRadius="8px";im.alt="Uploaded problem photo";im.onerror=badPrev;im.src=URL.createObjectURL(f);pv.appendChild(im);}
+  else if(f.type.indexOf("video/")===0){var v=document.createElement("video");v.style.maxWidth="100%";v.controls=true;v.onerror=badPrev;v.src=URL.createObjectURL(f);pv.appendChild(v);}
+  else{st.textContent+=" (no preview available for this file type — describe it in the box above.)";}
 });
 function aiReviewNote(){
   if(!myUpFile)return "";
-  var mb=(myUpFile.size/104876).toFixed(0);
+  var mb=(myUpFile.size/1048576).toFixed(1);
   return '<div class="detect"><b>AI review note:</b> you attached <b>'+esc(myUpFile.name)+'</b> ('+esc(myUpFile.type||"unknown type")+'). '+
     "On-device analysis only — describe what the photo/video shows (colors, damage, location) in the box above for the most accurate match. The file never leaves your device.</div>";
 }
@@ -227,6 +246,7 @@ $("goFix").addEventListener("click",function(){
     html+='<p class="note">Tip: try the Archive tab — '+DB.fixes.length+' records and counting. Or use the web search below.</p>';
     html+='<div class="toolbar"><button class="btn ghost small" onclick="webSearch(\''+esc(text.replace(/'/g,""))+'\')">🌐 Search the web for this fix</button></div>';
   }
+  html+='<p class="note">Fix records below are generated guidance, not certified professional advice — check the safety banner on each record.</p>';
   html+="</div>";
   $("fixResult").innerHTML=html;
   $("fixResult").scrollIntoView({behavior:"smooth",block:"start"});
@@ -340,12 +360,22 @@ function markDone(id){var p=store("fixit_my")||{};p[id]=p[id]||{steps:{}};p[id].
 
 /* ---------- live fix cam ---------- */
 var camStream=null;
+function camErrMsg(e){
+  var n=(e&&(e.name||""))||"";
+  if(n==="NotAllowedError"||n==="SecurityError")
+    return "Camera permission was denied — the Fix-It can't see anything. Tap your browser's site settings (lock icon in the address bar) and allow the camera, then try again.";
+  if(n==="NotFoundError"||n==="OverconstrainedError")
+    return "No camera was found on this device. You can still use the Fix Finder — describe the problem or upload a photo instead.";
+  if(n==="NotReadableError"||n==="AbortError")
+    return "The camera is busy in another app or temporarily unavailable. Close other camera apps and try again.";
+  return "Camera couldn't start ("+n+"). Check your browser's camera permission and try again.";
+}
 $("camStart").addEventListener("click",function(){
   var v=$("camVideo");
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("camStatus").textContent="Camera not supported in this browser.";return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("camStatus").textContent="Camera not supported in this browser. You can still use the Fix Finder — describe the problem or upload a photo instead.";return;}
   navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}).then(function(s){
     camStream=s;v.srcObject=s;v.play();$("camStatus").textContent="Live — feed stays on this device, nothing is recorded or uploaded.";
-  }).catch(function(e){$("camStatus").textContent="Camera blocked: "+e.name+". Check browser permission.";});
+  }).catch(function(e){$("camStatus").textContent=camErrMsg(e);});
 });
 $("camStop").addEventListener("click",function(){
   if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;$("camVideo").srcObject=null;}
@@ -407,6 +437,62 @@ function renderMine(){
 }
 $("expMy").addEventListener("click",function(){dl("fixit-my-data.json",JSON.stringify(store("fixit_my")||{},null,1),"application/json");});
 $("clrMy").addEventListener("click",function(){if(confirm("Clear all local fix progress on this device?")){try{localStorage.removeItem("fixit_my");}catch(e){}renderMine();}});
+$("impBtn").addEventListener("click",function(){$("impFile").click();});
+$("impFile").addEventListener("change",function(e){
+  var f=e.target.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var data=JSON.parse(rd.result);
+      if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("not an object");
+      var ids=Object.keys(data).filter(function(k){return/^JAH-FIX-\d+$/.test(k);});
+      if(!ids.length)throw new Error("no JAH-FIX records found");
+      var p=store("fixit_my")||{};
+      ids.forEach(function(k){p[k]=data[k];});
+      store("fixit_my",p);renderMine();
+      alert("Imported "+ids.length+" fix record"+(ids.length>1?"s":"")+" into My Fixes.");
+    }catch(err){alert("Couldn't import that file — it doesn't look like a Mr Fix-It backup ("+err.message+"). Export creates a valid one.");}
+    $("impFile").value="";
+  };
+  rd.onerror=function(){alert("Couldn't read that file — it may be damaged. Try exporting a fresh backup first.");};
+  rd.readAsText(f);
+});
+
+/* ---------- first-time tour + guide panel ---------- */
+var TOUR=[
+ {t:"Fix Finder — describe your problem",what:"WHAT: the Fix Finder tab.",does:"WHAT IT DOES: you type a problem in plain words and it finds the matching archived fix.",how:"HOW: type in the box, watch the repair field auto-detect (override it with the dropdown if wrong), then tap \u201C\uD83D\uDD27 Get my fix\u201D."},
+ {t:"Photo / video upload",what:"WHAT: the upload box in the Finder.",does:"WHAT IT DOES: attach a photo or video of the problem so the review covers what you see.",how:"HOW: tap the upload box and pick a photo or video. It stays on your device \u2014 never uploaded."},
+ {t:"Fix records",what:"WHAT: the Fix Archive tab and full record pages.",does:"WHAT IT DOES: every archived fix has a permanent JAH-FIX-###### ID with symptoms, diagnosis steps, ranked solutions, and a flow diagram.",how:"HOW: browse the Archive, filter by field with the chips, page with Prev/Next, or open any record directly with ?fix=JAH-FIX-000001."},
+ {t:"Safety first",what:"WHAT: the safety banner on every record.",does:"WHAT IT DOES: each fix is rated LOW, MEDIUM, or HIGH safety with its warnings.",how:"HOW: read the banner before touching anything \u2014 HIGH-safety electrical, gas, or structural work means calling a licensed professional."},
+ {t:"My Fixes",what:"WHAT: the My Fixes tab (DEVICE-LOCAL).",does:"WHAT IT DOES: tracks your attempted and completed fixes, saved only on this device.",how:"HOW: check off steps on any record \u2014 progress saves automatically. Export a JSON backup, import it back, or clear it."},
+ {t:"Ask the Fix-It AI",what:"WHAT: the Ask Fix-It AI tab.",does:"WHAT IT DOES: answers from the fix archive \u2014 it never invents records, and says NOT FOUND when nothing matches. Web findings are labeled ONLINE RESULT, separate from ARCHIVE RECORDs.",how:"HOW: ask a question, or tap \u201C\uD83C\uDF10 Search the web\u201D to research online and paste findings back."}
+];
+var tourI=0;
+function tourShow(i){
+  tourI=Math.max(0,Math.min(TOUR.length-1,i));
+  var s=TOUR[tourI];
+  $("tourStep").textContent="Step "+(tourI+1)+" of "+TOUR.length;
+  $("tourTitle").textContent=s.t;
+  $("tourBody").innerHTML="<p><b>"+esc(s.what)+"</b></p><p>"+esc(s.does)+"</p><p>"+esc(s.how)+"</p>";
+  $("tourBack").disabled=tourI===0;
+  $("tourNext").textContent=tourI===TOUR.length-1?"Finish":"Next \u2192";
+  $("tourCard").classList.remove("hidden");
+  $("tourNext").focus();
+}
+function tourEnd(seen){try{if(seen)localStorage.setItem("jah-tour-seen-fixit","1");}catch(e){}$("tourCard").classList.add("hidden");}
+$("tourNext").addEventListener("click",function(){if(tourI>=TOUR.length-1)tourEnd(true);else tourShow(tourI+1);});
+$("tourBack").addEventListener("click",function(){tourShow(tourI-1);});
+$("tourSkip").addEventListener("click",function(){tourEnd(true);});
+$("tourCard").addEventListener("keydown",function(e){
+  if(e.key==="Escape")tourEnd(true);
+  else if(e.key==="ArrowRight"){if(tourI>=TOUR.length-1)tourEnd(true);else tourShow(tourI+1);}
+  else if(e.key==="ArrowLeft")tourShow(tourI-1);
+});
+$("guideBtn").addEventListener("click",function(){
+  var g=$("guidePanel");g.classList.toggle("hidden");
+  if(!g.classList.contains("hidden"))g.scrollIntoView({behavior:"smooth",block:"start"});
+});
+$("replayTour").addEventListener("click",function(){tourEnd(false);tourShow(0);});
 
 /* ---------- init / deep links ---------- */
 window.openFix=openFix;window.loadCamSteps=loadCamSteps;window.webSearch=webSearch;
@@ -414,5 +500,7 @@ loadAll(function(){
   var m=/[?&]fix=(JAH-FIX-\d+)/i.exec(location.search);
   if(m&&m[1]){openFix(m[1].toUpperCase());}
   else{var qm=/[?&]q=([^&]+)/.exec(location.search);if(qm){showTab("archive");$("arcSearch").value=decodeURIComponent(qm[1]);ARC.q=$("arcSearch").value;renderArchive();}}
+  var seen=false;try{seen=!!localStorage.getItem("jah-tour-seen-fixit");}catch(e){}
+  if(!seen)tourShow(0);
 });
 })();

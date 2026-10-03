@@ -93,9 +93,26 @@ def main():
     api.update({"total_fixes": total, "progress": f"{total} / 1,000,000",
                 "fields": field_list, "updated": S.TODAY})
     json.dump(api, open(os.path.join(ROOT, "api.json"), "w"), indent=1)
+    stamp_counters(total, len(field_list), S.TODAY)
     with open(WATERMARK, "w") as f:
         f.write(str(max(os.path.getmtime(p) for p in files)))
     print(f"STATUS: +{len(records)} fixes, {total} total")
+
+
+def stamp_counters(total, nfields, today):
+    """Re-stamp the last-known real counts into index.html so chips never boot as bare ellipsis."""
+    import re
+    p = os.path.join(ROOT, "index.html")
+    h = open(p, encoding="utf-8").read()
+    h2, n1 = re.subn(r'<b id="stFixes">.*?</b>', f'<b id="stFixes">{total}</b>', h)
+    h2, n2 = re.subn(r'<b id="stFields">.*?</b>', f'<b id="stFields">{nfields}</b>', h2)
+    h2, n3 = re.subn(r'<b id="stUpd">.*?</b>', f'<b id="stUpd">{today}</b>', h2)
+    assert n1 == n2 == n3 == 1, "counter stamp regexes did not each match exactly once — index.html chip markup changed"
+    if h2 != h:
+        open(p, "w", encoding="utf-8").write(h2)
+        print(f"STATUS: stamped index.html counters ({total} fixes, {nfields} fields, {today})")
+    else:
+        print(f"STATUS: index.html counters already current ({total} fixes, {nfields} fields, {today})")
 
 
 if __name__ == "__main__":
