@@ -39,4 +39,4 @@ difficulty, created, version, status, content_hash (SHA-256), canonical_url.
 - Cyber Mega-Mall (free replacement products): signature-cyber-mega-mall ?q=
 - Experiment Solver (scientific experiments): signature-experiment-solver
 - Chip Maker (chip designs): signature-chip-maker · App Archive: signature-app-archive
-- 3D Print Depository (printable parts): signature-3d-print
+- 3D Print Mega Mall (printable parts): signature-3d-print
