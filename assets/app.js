@@ -458,41 +458,20 @@ $("impFile").addEventListener("change",function(e){
   rd.readAsText(f);
 });
 
-/* ---------- first-time tour + guide panel ---------- */
-var TOUR=[
- {t:"Fix Finder — describe your problem",what:"WHAT: the Fix Finder tab.",does:"WHAT IT DOES: you type a problem in plain words and it finds the matching archived fix.",how:"HOW: type in the box, watch the repair field auto-detect (override it with the dropdown if wrong), then tap \u201C\uD83D\uDD27 Get my fix\u201D."},
- {t:"Photo / video upload",what:"WHAT: the upload box in the Finder.",does:"WHAT IT DOES: attach a photo or video of the problem so the review covers what you see.",how:"HOW: tap the upload box and pick a photo or video. It stays on your device \u2014 never uploaded."},
- {t:"Fix records",what:"WHAT: the Fix Archive tab and full record pages.",does:"WHAT IT DOES: every archived fix has a permanent JAH-FIX-###### ID with symptoms, diagnosis steps, ranked solutions, and a flow diagram.",how:"HOW: browse the Archive, filter by field with the chips, page with Prev/Next, or open any record directly with ?fix=JAH-FIX-000001."},
- {t:"Safety first",what:"WHAT: the safety banner on every record.",does:"WHAT IT DOES: each fix is rated LOW, MEDIUM, or HIGH safety with its warnings.",how:"HOW: read the banner before touching anything \u2014 HIGH-safety electrical, gas, or structural work means calling a licensed professional."},
- {t:"My Fixes",what:"WHAT: the My Fixes tab (DEVICE-LOCAL).",does:"WHAT IT DOES: tracks your attempted and completed fixes, saved only on this device.",how:"HOW: check off steps on any record \u2014 progress saves automatically. Export a JSON backup, import it back, or clear it."},
- {t:"Ask the Fix-It AI",what:"WHAT: the Ask Fix-It AI tab.",does:"WHAT IT DOES: answers from the fix archive \u2014 it never invents records, and says NOT FOUND when nothing matches. Web findings are labeled ONLINE RESULT, separate from ARCHIVE RECORDs.",how:"HOW: ask a question, or tap \u201C\uD83C\uDF10 Search the web\u201D to research online and paste findings back."}
-];
-var tourI=0;
-function tourShow(i){
-  tourI=Math.max(0,Math.min(TOUR.length-1,i));
-  var s=TOUR[tourI];
-  $("tourStep").textContent="Step "+(tourI+1)+" of "+TOUR.length;
-  $("tourTitle").textContent=s.t;
-  $("tourBody").innerHTML="<p><b>"+esc(s.what)+"</b></p><p>"+esc(s.does)+"</p><p>"+esc(s.how)+"</p>";
-  $("tourBack").disabled=tourI===0;
-  $("tourNext").textContent=tourI===TOUR.length-1?"Finish":"Next \u2192";
-  $("tourCard").classList.remove("hidden");
-  $("tourNext").focus();
-}
-function tourEnd(seen){try{if(seen)localStorage.setItem("jah-tour-seen-fixit","1");}catch(e){}$("tourCard").classList.add("hidden");}
-$("tourNext").addEventListener("click",function(){if(tourI>=TOUR.length-1)tourEnd(true);else tourShow(tourI+1);});
-$("tourBack").addEventListener("click",function(){tourShow(tourI-1);});
-$("tourSkip").addEventListener("click",function(){tourEnd(true);});
-$("tourCard").addEventListener("keydown",function(e){
-  if(e.key==="Escape")tourEnd(true);
-  else if(e.key==="ArrowRight"){if(tourI>=TOUR.length-1)tourEnd(true);else tourShow(tourI+1);}
-  else if(e.key==="ArrowLeft")tourShow(tourI-1);
-});
-$("guideBtn").addEventListener("click",function(){
-  var g=$("guidePanel");g.classList.toggle("hidden");
-  if(!g.classList.contains("hidden"))g.scrollIntoView({behavior:"smooth",block:"start"});
-});
-$("replayTour").addEventListener("click",function(){tourEnd(false);tourShow(0);});
+/* ---------- TOUR FIX 2026-10-04: welcome overlay only (no auto-scroll, no spotlight). localStorage jah-tour-seen-fixit ---------- */
+function tourSeen(){try{return localStorage.getItem("jah-tour-seen-fixit")==="1";}catch(e){return true;}}
+function tourMark(){try{localStorage.setItem("jah-tour-seen-fixit","1");}catch(e){}}
+function tourOpen(){var o=$("tourOver");o.classList.add("open");o.setAttribute("aria-hidden","false");}
+function tourClose(){var o=$("tourOver");o.classList.remove("open");o.setAttribute("aria-hidden","true");tourMark();}
+$("tourOk").addEventListener("click",tourClose);
+$("tourHelp").addEventListener("click",function(){tourClose();var g=$("guidePanel");g.classList.remove("hidden");});
+$("tourOver").addEventListener("click",function(e){if(e.target===$("tourOver"))tourClose();});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&$("tourOver").classList.contains("open"))tourClose();});
+/* ? Guide button re-opens the welcome tour */
+$("guideBtn").addEventListener("click",function(){$("guidePanel").classList.add("hidden");tourOpen();});
+$("replayTour").addEventListener("click",function(){$("guidePanel").classList.add("hidden");tourOpen();});
+/* first visit: welcome overlay */
+setTimeout(function(){if(!tourSeen())tourOpen();},900);
 
 /* ---------- init / deep links ---------- */
 window.openFix=openFix;window.loadCamSteps=loadCamSteps;window.webSearch=webSearch;
@@ -500,7 +479,5 @@ loadAll(function(){
   var m=/[?&]fix=(JAH-FIX-\d+)/i.exec(location.search);
   if(m&&m[1]){openFix(m[1].toUpperCase());}
   else{var qm=/[?&]q=([^&]+)/.exec(location.search);if(qm){showTab("archive");$("arcSearch").value=decodeURIComponent(qm[1]);ARC.q=$("arcSearch").value;renderArchive();}}
-  var seen=false;try{seen=!!localStorage.getItem("jah-tour-seen-fixit");}catch(e){}
-  if(!seen)tourShow(0);
 });
 })();

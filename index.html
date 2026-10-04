@@ -150,15 +150,19 @@
 </footer>
 </div>
 <noscript><div class="wrap"><div class="card"><h2>Fix fields</h2><p>Enable JavaScript for the interactive Fix Finder. The archive covers: Plumbing, Electrical, Appliances, Heating &amp; Cooling, Automotive, Computers &amp; Cyber, Phones &amp; Tablets, Home Repair, Vintage Electronics, Chips &amp; Circuit Boards, Small Engines &amp; Tools, Lawn &amp; Outdoor.</p></div></div></noscript>
-<div class="tourcard hidden" id="tourCard" role="dialog" aria-modal="false" aria-labelledby="tourTitle" tabindex="-1">
-<div class="tourhead"><span id="tourStep" class="note"></span><b id="tourTitle"></b></div>
-<div id="tourBody" class="tourbody"></div>
-<div class="toolbar tourbtns">
-<button class="btn ghost small" id="tourSkip">Skip tour</button>
-<button class="btn ghost small" id="tourBack">← Back</button>
-<button class="btn small" id="tourNext">Next →</button>
+<div id="tourOver" aria-hidden="true">
+<div id="tourModal" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+<h3 id="tourTitle">Welcome to The Signature Mr Fix-It</h3>
+<ol>
+<li>Describe your problem in plain words — the <b>Fix Finder</b> detects the repair field automatically. Tap <b>🔧 Get my fix</b>.</li>
+<li>Attach a <b>photo or video</b> of the problem (it stays on your device — never uploaded), or use <b>🎥 Live Fix Cam</b> for a walkthrough beside your live feed.</li>
+<li>Every fix is a permanent <b>JAH-FIX-######</b> record — symptoms, diagnosis steps, ranked solutions. Browse the <b>Fix Archive A–Z</b> any time.</li>
+<li>Check the <b>safety banner</b> first: HIGH-safety electrical, gas, or structural work means calling a <b>licensed professional</b>.</li>
+<li>Your progress saves <b>on this device only</b> — check off steps, mark it fixed, and back up with Export.</li>
+</ol>
+<div class="touract"><button id="tourOk">Got it</button></div>
+<button id="tourHelp">Full guide</button>
 </div>
-<p class="note">Tip: Esc closes, ←/→ move. Press <b>Finish</b> or <b>Skip</b> and the tour won't show again — replay it any time from the <b>? Guide</b> panel.</p>
 </div>
 <script src="assets/app.js"></script>
 </body>
