@@ -7,7 +7,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = "https://justinahiggins614-cmyk.github.io/signature-fixit/"
 TODAY = date.today().isoformat()
 
-urls = [(BASE, TODAY, 1.0), (BASE + "api.json", TODAY, 0.8), (BASE + "llms.txt", TODAY, 0.5)]
+urls = [(BASE, TODAY, 1.0), (BASE + "api.json", TODAY, 0.8), (BASE + "llms.txt", TODAY, 0.5),
+        (BASE + "browse.html", TODAY, 0.9)]
 fx = os.path.join(ROOT, "data", "fixes.jsonl")
 if os.path.exists(fx):
     for line in open(fx, encoding="utf-8"):

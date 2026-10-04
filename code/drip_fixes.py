@@ -113,6 +113,21 @@ def stamp_counters(total, nfields, today):
         print(f"STATUS: stamped index.html counters ({total} fixes, {nfields} fields, {today})")
     else:
         print(f"STATUS: index.html counters already current ({total} fixes, {nfields} fields, {today})")
+    # browse.html uses the same counts — stamp AFTER data flushes, same call, never one run behind.
+    pb = os.path.join(ROOT, "browse.html")
+    if os.path.exists(pb):
+        b = open(pb, encoding="utf-8").read()
+        b2, m1 = re.subn(r'<b id="brwTotal">.*?</b>', f'<b id="brwTotal">{total}</b>', b)
+        b2, m2 = re.subn(r'<b id="brwFields">.*?</b>', f'<b id="brwFields">{nfields}</b>', b2)
+        b2, m3 = re.subn(r'<b id="brwUpd">.*?</b>', f'<b id="brwUpd">{today}</b>', b2)
+        assert m1 == m2 == m3 == 1, "counter stamp regexes did not each match exactly once — browse.html chip markup changed"
+        b2, m4 = re.subn(r'"numberOfItems":\d+', f'"numberOfItems":{total}', b2)
+        assert m4 == 1, "browse.html JSON-LD numberOfItems stamp did not match exactly once"
+        if b2 != b:
+            open(pb, "w", encoding="utf-8").write(b2)
+            print(f"STATUS: stamped browse.html counters ({total} fixes, {nfields} fields, {today})")
+        else:
+            print(f"STATUS: browse.html counters already current ({total} fixes, {nfields} fields, {today})")
 
 
 if __name__ == "__main__":
