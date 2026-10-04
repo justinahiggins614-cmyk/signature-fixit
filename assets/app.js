@@ -1,3 +1,30 @@
+/* ==== JAH global read-aloud controller (one per page): no stacked voices, no orphan audio ==== */
+(function(){
+if(window.__JAHREAD)return;
+var R={audios:[],lastTap:0,lastLabel:""};
+R.stopAll=function(){
+ try{if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(e){}
+ try{if(window.responsiveVoice&&window.responsiveVoice.cancel)window.responsiveVoice.cancel();}catch(e){}
+ var i,a;
+ for(i=0;i<R.audios.length;i++){a=R.audios[i];try{a.pause();}catch(e){}try{a.removeAttribute("src");}catch(e){}try{a.load();}catch(e){}}
+ R.audios.length=0;
+ var els=document.querySelectorAll("audio");
+ for(i=0;i<els.length;i++){try{els[i].pause();}catch(e){}}
+};
+R.reg=function(a){if(a&&R.audios.indexOf(a)<0)R.audios.push(a);return a;};
+R.playGuard=function(label){
+ var now=Date.now();
+ if(now-R.lastTap<450&&label===R.lastLabel){R.lastTap=0;R.lastLabel="";R.stopAll();return false;}
+ R.lastTap=now;R.lastLabel=String(label||"");
+ R.stopAll();return true;
+};
+try{
+ var NativeAudio=window.Audio;
+ window.Audio=function(src){var a=src===undefined?new NativeAudio():new NativeAudio(src);R.reg(a);return a;};
+ window.Audio.prototype=NativeAudio.prototype;
+}catch(e){}
+window.__JAHREAD=R;
+})();
 /* The Signature Mr Fix-It — app.js */
 (function(){
 "use strict";
@@ -41,6 +68,7 @@ $("backBtn").addEventListener("click",function(){$("sec-record").classList.add("
 var TTS={speaking:false,
   chunk:function(t){var out=[],s=String(t);while(s.length>200){var i=s.lastIndexOf(". ",200);if(i<0)i=s.lastIndexOf(" ",200);if(i<0)i=200;out.push(s.slice(0,i+1));s=s.slice(i+1);}if(s.trim())out.push(s);return out;},
   speak:function(text,onend){
+    if(window.__JAHREAD&&!window.__JAHREAD.playGuard("speak"))return;
     this.stop();
     var chunks=this.chunk(text),self=this,ci=0;
     self.speaking=true;
@@ -71,9 +99,9 @@ var TTS={speaking:false,
     }
     play();
   },
-  stop:function(){this.speaking=false;try{speechSynthesis.cancel();}catch(e){}}
+  stop:function(){try{if(window.__JAHREAD)window.__JAHREAD.stopAll();}catch(e){}this.speaking=false;try{speechSynthesis.cancel();}catch(e){}}
 };
-function readAloud(text){TTS.speak(text);}
+function readAloud(text){if(window.__JAHREAD&&!window.__JAHREAD.playGuard("readAloud"))return;TTS.speak(text);}
 
 /* ---------- data loading ---------- */
 function gz(url,cb){
