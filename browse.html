@@ -347,6 +347,8 @@ $("q").addEventListener("input",function(){
 function openDeep(){
   try{
     var p=new URLSearchParams(location.search);
+    var qq=p.get("q");
+    if(qq!==null&&qq!==""){var qi=$("q");if(qi){qi.value=qq;qi.dispatchEvent(new Event("input",{bubbles:true}));}}
     var f=p.get("field"),L=p.get("letter");
     if(f!==null&&mode!=="field")setMode("field");
     if(f!==null){var d=Array.prototype.find.call(document.querySelectorAll("details.fld"),function(x){return x.querySelector("summary").textContent.toLowerCase().indexOf(f.toLowerCase())===0;});if(d){d.open=true;d.scrollIntoView();return;}}

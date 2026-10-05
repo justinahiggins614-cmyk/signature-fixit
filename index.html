@@ -69,7 +69,6 @@ var PS=(typeof JAHProfile!=='undefined')?JAHProfile.store:localStorage;</script>
 <main id="main">
 <div class="tabs" role="tablist" aria-label="Fix-It sections">
 <button class="tab" role="tab" aria-selected="true" data-tab="finder" id="tab-finder">🔍 Fix Finder</button>
-<button class="tab" role="tab" aria-selected="false" data-tab="archive" id="tab-archive">📚 Fix Archive</button>
 <button class="tab" role="tab" aria-selected="false" data-tab="cam" id="tab-cam">🎥 Live Fix Cam</button>
 <button class="tab" role="tab" aria-selected="false" data-tab="ask" id="tab-ask">🤖 Ask Fix-It AI</button>
 <button class="tab" role="tab" aria-selected="false" data-tab="mine" id="tab-mine">🧰 My Fixes <span class="localtag">DEVICE-LOCAL</span></button>
@@ -79,7 +78,7 @@ var PS=(typeof JAHProfile!=='undefined')?JAHProfile.store:localStorage;</script>
 <h2>? How to use the Mr Fix-It</h2>
 <p><b>Fix Finder:</b> type your problem in plain words. The repair field is detected automatically — use the dropdown to override it. Tap <b>🔧 Get my fix</b> for the best archived match with ranked solutions.</p>
 <p><b>Photo / video:</b> attach a photo or video of the problem for review. Files stay on your device only — never uploaded. Limit 100 MB per file; damaged files show a clear message.</p>
-<p><b>Fix Archive:</b> every record has a permanent <b>JAH-FIX-######</b> ID. <a href="browse.html">Browse the full archive A–Z</a> — by repair field or by title — or search here, filter by field chip, page with Prev/Next, or open a record directly with <code>?fix=JAH-FIX-000001</code>. Results labeled <b>ARCHIVE RECORD</b> come from the archive.</p>
+<p><b>Fix Archive:</b> every record has a permanent <b>JAH-FIX-######</b> ID. <a href="browse.html">Browse the full archive A–Z</a> — by repair field or by title — or open a record directly with <code>?fix=JAH-FIX-000001</code>. Results labeled <b>ARCHIVE RECORD</b> come from the archive.</p>
 <p><b>Live Fix Cam:</b> point your camera at the problem and follow the walkthrough beside your live feed. Nothing is recorded or uploaded. If the camera is blocked or missing, you'll get a plain-language message explaining why and what to do.</p>
 <p><b>Ask the Fix-It AI:</b> grounded in the archive — it never invents fixes and says <b>NOT FOUND</b> when nothing matches. Web findings are labeled <span class="online-tag">ONLINE RESULT</span>, always separate from <b>ARCHIVE RECORD</b>s.</p>
 <p><b>My Fixes:</b> your progress, saved on this device only. Check off diagnosis steps on any record; mark it fixed when done. Export a JSON backup, import it back, or clear it. Nothing leaves your browser.</p>
@@ -111,17 +110,13 @@ var PS=(typeof JAHProfile!=='undefined')?JAHProfile.store:localStorage;</script>
 <div id="fixResult" aria-live="polite"></div>
 </section>
 
-<!-- ARCHIVE -->
-<section id="sec-archive" role="tabpanel" aria-labelledby="tab-archive" class="hidden">
-<div class="card">
-<h2>Fix Archive</h2>
-<p class="note">Every record has a permanent <b>JAH-FIX-######</b> ID. Search, filter by field, or open any record directly with <code>?fix=JAH-FIX-000001</code>.</p>
-<label for="arcSearch">Search the archive</label>
-<input type="search" id="arcSearch" placeholder="Try: leaky faucet, dead outlet, VCR eating tapes, PC won't boot…">
-<div class="toolbar" id="fieldChips" role="group" aria-label="Filter by field"></div>
-<div id="myPin"></div>
-<div class="grid" id="arcGrid"></div>
-<div class="pager"><button class="btn ghost small" id="pgPrev">← Prev</button><span id="pgInfo" class="note"></span><button class="btn ghost small" id="pgNext">Next →</button></div>
+<!-- ARCHIVE (moved 2026-10-05: the full Fix Archive A–Z lives on browse.html — the archive tab page.
+     The front door keeps this entry card linking inward.) -->
+<section id="sec-archive-link">
+<div class="card" style="text-align:center">
+<h2>📚 The Full Fix Archive</h2>
+<p class="note">Every record — by repair field and by title, marching to 1,000,000. Search it, filter it, browse it A–Z.</p>
+<p><a class="btn" href="browse.html" style="text-decoration:none;display:inline-block">📚 Browse the full A–Z archive →</a></p>
 </div>
 </section>
 

@@ -63,13 +63,14 @@ document.querySelectorAll(".tab").forEach(function(t){
   t.addEventListener("click",function(){showTab(t.dataset.tab);});
 });
 function showTab(name){
+  /* archive tab moved 2026-10-05: the full Fix Archive A–Z lives on browse.html */
+  if(name==="archive"){location.href="browse.html";return;}
   document.querySelectorAll(".tab").forEach(function(t){t.setAttribute("aria-selected",t.dataset.tab===name?"true":"false");});
-  ["finder","archive","cam","ask","mine"].forEach(function(s){$("sec-"+s).classList.toggle("hidden",s!==name);});
-  $("sec-record").classList.toggle("hidden",true);
+  ["finder","cam","ask","mine"].forEach(function(s){var el=$("sec-"+s);if(el)el.classList.toggle("hidden",s!==name);});
+  var rec=$("sec-record");if(rec)rec.classList.add("hidden");
   if(name==="mine")renderMine();
-  if(name==="archive"&&DB.fixes)renderArchive();
 }
-$("backBtn").addEventListener("click",function(){$("sec-record").classList.add("hidden");showTab("archive");});
+var bb=$("backBtn");if(bb)bb.addEventListener("click",function(){location.href="browse.html";});
 
 /* ---------- tiered TTS: speechSynthesis -> Google TTS hosts ---------- */
 var TTS={speaking:false,
@@ -148,11 +149,13 @@ function loadAll(cb){
     var sel=$("fieldOverride");
     DB.fields.forEach(function(f){var o=document.createElement("option");o.value=f.name;o.textContent=f.name+" ("+f.count+")";sel.appendChild(o);});
     var chips=$("fieldChips");
+    if(chips){
     var all=document.createElement("button");all.className="fchip";all.innerHTML="<b>All fields</b>";
-    all.addEventListener("click",function(){ARC.field="";renderArchive();});
+    all.addEventListener("click",function(){location.href="browse.html";});
     chips.appendChild(all);
     DB.fields.forEach(function(f){var b=document.createElement("button");b.className="fchip";b.innerHTML="<b>"+esc(f.name)+"</b><small>"+f.count+" fixes</small>";
-      b.addEventListener("click",function(){ARC.field=f.name;renderArchive();});chips.appendChild(b);});
+      b.addEventListener("click",function(){location.href="browse.html?field="+encodeURIComponent(f.name);});chips.appendChild(b);});
+    }
     gz("data/index/fixes.idx.json.gz",function(txt,err){
       if(txt){DB.idx=txt.split("\n").filter(Boolean).map(function(l){try{return JSON.parse(l);}catch(e){return null;}}).filter(Boolean);}
       fetch("data/fixes.jsonl").then(function(r){return r.text();}).then(function(t){
@@ -327,64 +330,11 @@ function solutionsHTML(rec,compact){
 function webSearch(q){window.open("https://www.google.com/search?q="+encodeURIComponent(q+" fix how to repair"),"_blank");}
 $("goCam").addEventListener("click",function(){showTab("cam");});
 
-/* ---------- archive browser ---------- */
-var ARC={q:"",field:"",page:0,per:24};
-$("arcSearch").addEventListener("input",function(e){ARC.q=e.target.value;ARC.page=0;renderArchive();});
-$("pgPrev").addEventListener("click",function(){if(ARC.page>0){ARC.page--;renderArchive();}});
-$("pgNext").addEventListener("click",function(){ARC.page++;renderArchive();});
-function arcFiltered(){
-  var q=tokens(ARC.q);
-  return DB.fixes.filter(function(r){
-    if(ARC.field&&r.field!==ARC.field)return false;
-    if(!q.length)return true;
-    var hay=(r.id+" "+r.title+" "+r.field+" "+r.symptoms.join(" ")).toLowerCase();
-    return q.every(function(w){return hay.indexOf(w)>=0;});
-  });
-}
-function renderArchive(){
-  if(!DB.fixes)return;
-  var list=arcFiltered(),pages=Math.max(1,Math.ceil(list.length/ARC.per));
-  if(ARC.page>=pages)ARC.page=pages-1;
-  var slice=list.slice(ARC.page*ARC.per,(ARC.page+1)*ARC.per);
-  var g=$("arcGrid");g.innerHTML="";
-  /* JAHProfile v2 "your-stuff-first": in My view (opted in + personalized),
-     pin the user's own attempted/completed fixes ABOVE the full archive grid.
-     ADDITIVE ONLY — the archive grid, search, and pager below are untouched;
-     signed-out visitors see nothing extra. */
-  try{
-    var _pin=$("myPin");
-    if(_pin){
-      var _live=(typeof JAHProfile!=="undefined"&&JAHProfile&&typeof JAHProfile.personalized==="function"&&JAHProfile.personalized());
-      var _mine=_live?(store("fixit_my")||{}):{};
-      var _ids=Object.keys(_mine).sort(function(a,b){return(((_mine[b]||{}).updated)||0)-(((_mine[a]||{}).updated)||0);});
-      if(_ids.length){
-        var _h='<div class="card" style="border:1px dashed var(--acc)"><h3>&#129520; Your fixes — first in My view</h3><ul>';
-        _ids.slice(0,8).forEach(function(_id){
-          var _r=fixById(_id),_t=_r?_r.title:"(record not loaded)";
-          var _st=((_mine[_id]||{}).status==="completed")?"&#10003; Completed":"&#9679; Attempted";
-          _h+='<li>'+_st+' — <a href="index.html?fix='+encodeURIComponent(_id)+'">'+esc(_t)+'</a> <span class="note">'+esc(_id)+'</span></li>';
-        });
-        _h+='</ul>';
-        if(_ids.length>8)_h+='<p class="note">+'+(_ids.length-8)+' more in the &#129520; My Fixes tab.</p>';
-        _h+='<p class="note">The full Fix Archive follows below — nothing is hidden.</p></div>';
-        _pin.innerHTML=_h;
-      }else{_pin.innerHTML="";}
-    }
-  }catch(_e){}
-  slice.forEach(function(r){
-    var b=document.createElement("button");b.className="fixcard";
-    b.innerHTML='<span class="fid">'+r.id+'</span><br><b>'+esc(r.title)+'</b><br><span class="fld">'+esc(r.field)+" · "+esc(r.difficulty)+"</span>";
-    b.addEventListener("click",function(){openFix(r.id);});
-    g.appendChild(b);
-  });
-  $("pgInfo").textContent="Page "+(ARC.page+1)+" of "+pages+" · "+list.length+" records"+(ARC.field?" in "+ARC.field:"");
-}
-
 /* ---------- record view ---------- */
 function openFix(id){
   var r=fixById(id);if(!r)return;
   showTab("finder");
-  ["finder","archive","cam","ask","mine"].forEach(function(s){$("sec-"+s).classList.add("hidden");});
+  ["finder","cam","ask","mine"].forEach(function(s){var el=$("sec-"+s);if(el)el.classList.add("hidden");});
   document.querySelectorAll(".tab").forEach(function(t){t.setAttribute("aria-selected","false");});
   var sec=$("sec-record");sec.classList.remove("hidden");
   var prog=store("fixit_my")||{};var mine=prog[id]||{steps:{}};
@@ -571,6 +521,6 @@ window.openFix=openFix;window.loadCamSteps=loadCamSteps;window.webSearch=webSear
 loadAll(function(){
   var m=/[?&]fix=(JAH-FIX-\d+)/i.exec(location.search);
   if(m&&m[1]){openFix(m[1].toUpperCase());}
-  else{var qm=/[?&]q=([^&]+)/.exec(location.search);if(qm){showTab("archive");$("arcSearch").value=decodeURIComponent(qm[1]);ARC.q=$("arcSearch").value;renderArchive();}}
+  else{var qm=/[?&]q=([^&]+)/.exec(location.search);if(qm){location.href="browse.html?q="+encodeURIComponent(decodeURIComponent(qm[1]));}}
 });
 })();
