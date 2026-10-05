@@ -340,6 +340,30 @@ function renderArchive(){
   if(ARC.page>=pages)ARC.page=pages-1;
   var slice=list.slice(ARC.page*ARC.per,(ARC.page+1)*ARC.per);
   var g=$("arcGrid");g.innerHTML="";
+  /* JAHProfile v2 "your-stuff-first": in My view (opted in + personalized),
+     pin the user's own attempted/completed fixes ABOVE the full archive grid.
+     ADDITIVE ONLY — the archive grid, search, and pager below are untouched;
+     signed-out visitors see nothing extra. */
+  try{
+    var _pin=$("myPin");
+    if(_pin){
+      var _live=(typeof JAHProfile!=="undefined"&&JAHProfile&&typeof JAHProfile.personalized==="function"&&JAHProfile.personalized());
+      var _mine=_live?(store("fixit_my")||{}):{};
+      var _ids=Object.keys(_mine).sort(function(a,b){return(((_mine[b]||{}).updated)||0)-(((_mine[a]||{}).updated)||0);});
+      if(_ids.length){
+        var _h='<div class="card" style="border:1px dashed var(--acc)"><h3>&#129520; Your fixes — first in My view</h3><ul>';
+        _ids.slice(0,8).forEach(function(_id){
+          var _r=fixById(_id),_t=_r?_r.title:"(record not loaded)";
+          var _st=((_mine[_id]||{}).status==="completed")?"&#10003; Completed":"&#9679; Attempted";
+          _h+='<li>'+_st+' — <a href="index.html?fix='+encodeURIComponent(_id)+'">'+esc(_t)+'</a> <span class="note">'+esc(_id)+'</span></li>';
+        });
+        _h+='</ul>';
+        if(_ids.length>8)_h+='<p class="note">+'+(_ids.length-8)+' more in the &#129520; My Fixes tab.</p>';
+        _h+='<p class="note">The full Fix Archive follows below — nothing is hidden.</p></div>';
+        _pin.innerHTML=_h;
+      }else{_pin.innerHTML="";}
+    }
+  }catch(_e){}
   slice.forEach(function(r){
     var b=document.createElement("button");b.className="fixcard";
     b.innerHTML='<span class="fid">'+r.id+'</span><br><b>'+esc(r.title)+'</b><br><span class="fld">'+esc(r.field)+" · "+esc(r.difficulty)+"</span>";

@@ -118,6 +118,7 @@ var PS=(typeof JAHProfile!=='undefined')?JAHProfile.store:localStorage;</script>
 <label for="arcSearch">Search the archive</label>
 <input type="search" id="arcSearch" placeholder="Try: leaky faucet, dead outlet, VCR eating tapes, PC won't boot…">
 <div class="toolbar" id="fieldChips" role="group" aria-label="Filter by field"></div>
+<div id="myPin"></div>
 <div class="grid" id="arcGrid"></div>
 <div class="pager"><button class="btn ghost small" id="pgPrev">← Prev</button><span id="pgInfo" class="note"></span><button class="btn ghost small" id="pgNext">Next →</button></div>
 </div>
@@ -195,6 +196,16 @@ var PS=(typeof JAHProfile!=='undefined')?JAHProfile.store:localStorage;</script>
 <script>
 /* JAHProfile sign-in button mount (graceful header fallback) */
 (function(){var m=document.querySelector('header .booksearch')||document.querySelector('nav.jtabbar')||document.querySelector('header nav')||document.querySelector('header')||document.body;if(window.JAHProfile&&JAHProfile.ui)JAHProfile.ui.renderButton(m);})();
+</script>
+<script>
+(function () {
+  /* JAHProfile v2 page greeting — renders ONLY when personalization is live
+     (signed-in + opted in + My view); signed-out visitors see nothing. */
+  if (window.JAHProfile && JAHProfile.ui) {
+    var mount = document.querySelector('header') || document.body;
+    JAHProfile.ui.renderGreeting(mount); /* renders ONLY when personalization is live */
+  }
+})();
 </script>
 </body>
 </html>
