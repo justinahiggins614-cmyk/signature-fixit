@@ -420,6 +420,21 @@ function loadCamSteps(id){
 
 /* ---------- Ask the Fix-It AI (grounded) ---------- */
 function aiAnswer(q){
+  /* v2.1: social + ecosystem chat goes through the conversational engine
+     (with memory). Fix questions stay 100% on the archive path below —
+     the AI never invents a fix. */
+  var qt = ' ' + String(q || '').toLowerCase() + ' ';
+  var fixy = /(fix|repair|broken|broke|not working|won't |wont |leak|clog|replace|install|toilet|faucet|sink|wire|wiring|engine|motor|screen|crack|battery|charge|overheat|noise|rattle|smell|smoke|stain|dent|door|window|lock|hinge|pipe|drain|pump|fan|belt|blade|filter|screw|nail|paint|tile|roof|gutter)/.test(qt);
+  if (!fixy && typeof JAHtalk !== 'undefined'){
+    try{
+      var FP = {name: 'Mr Fix-It AI', id: 'JAH-FIX-AI',
+        description: 'The Mr Fix-It AI. I find fixes in the fix archive and walk you through them step by step.',
+        abilities: ['Find fixes in the fix archive', 'Walk through repairs step by step', 'Track your fix progress on this device', 'Point you around the JAH network'],
+        domain: 'repair and fixing', kind: 'domain'};
+      var fr = JAHtalk.chatFor(FP, 'fixit-ask').reply(q);
+      if (fr) return '<div class="msg a">' + esc(fr) + '<span class="src">Source: on-device chat</span></div>';
+    }catch(e){}
+  }
   var hits=findFixes(q,3);
   var p=store("fixit_my")||{};
   var done=Object.keys(p).filter(function(k){return p[k].status==="completed";}).length;
