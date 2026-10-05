@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>try{if(localStorage.getItem("jah-theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
+<script src="js/signin.js"></script>
+<script>/* JAHProfile-aware storage: public = plain localStorage, signed-in = per-profile namespace */
+var PS=(typeof JAHProfile!=='undefined')?JAHProfile.store:localStorage;</script>
+<script>try{if(PS.get("jah-theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Browse the Fix Archive A–Z — The Signature Mr Fix-It</title>
@@ -272,7 +275,7 @@ document.getElementById("jah-askai-q").addEventListener("keydown",function(e){if
 "use strict";
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
-var tb=$("themeBtn");if(tb)tb.addEventListener("click",function(){try{var h=document.documentElement;if(h.getAttribute("data-theme")==="dark"){h.removeAttribute("data-theme");localStorage.setItem("jah-theme","light");}else{h.setAttribute("data-theme","dark");localStorage.setItem("jah-theme","dark");}}catch(e){}});
+var tb=$("themeBtn");if(tb)tb.addEventListener("click",function(){try{var h=document.documentElement;if(h.getAttribute("data-theme")==="dark"){h.removeAttribute("data-theme");PS.set("jah-theme","light");}else{h.setAttribute("data-theme","dark");PS.set("jah-theme","dark");}}catch(e){}});
 /* lazy-load the small compressed index (id/title/field only) — full records never load here */
 function gz(url,cb){
   fetch(url).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.arrayBuffer();})
@@ -363,6 +366,10 @@ fetch("api.json").then(function(r){return r.json();}).then(function(api){
   });
 }).catch(function(e){var n=$("loadNote");if(n)n.textContent="Archive data failed to load. Try reloading.";});
 })();
+</script>
+<script>
+/* JAHProfile sign-in button mount (graceful header fallback) */
+(function(){var m=document.querySelector('header .booksearch')||document.querySelector('nav.jtabbar')||document.querySelector('header nav')||document.querySelector('header')||document.body;if(window.JAHProfile&&JAHProfile.ui)JAHProfile.ui.renderButton(m);})();
 </script>
 </body>
 </html>
