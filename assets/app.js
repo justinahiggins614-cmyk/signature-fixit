@@ -68,7 +68,7 @@ $("backBtn").addEventListener("click",function(){$("sec-record").classList.add("
 var TTS={speaking:false,
   chunk:function(t){var out=[],s=String(t);while(s.length>200){var i=s.lastIndexOf(". ",200);if(i<0)i=s.lastIndexOf(" ",200);if(i<0)i=200;out.push(s.slice(0,i+1));s=s.slice(i+1);}if(s.trim())out.push(s);return out;},
   speak:function(text,onend){
-    if(window.__JAHREAD&&!window.__JAHREAD.playGuard("speak"))return;
+    if(window.__JAHREAD&&!window.__JAHREAD.playGuard("speak"))return false;
     this.stop();
     var chunks=this.chunk(text),self=this,ci=0;
     self.speaking=true;
@@ -98,10 +98,27 @@ var TTS={speaking:false,
       var p=aud.play();if(p&&p.catch)p.catch(function(){hi++;gTTS();});
     }
     play();
+    return true;
   },
   stop:function(){try{if(window.__JAHREAD)window.__JAHREAD.stopAll();}catch(e){}this.speaking=false;try{speechSynthesis.cancel();}catch(e){}}
 };
 function readAloud(text){if(window.__JAHREAD&&!window.__JAHREAD.playGuard("readAloud"))return;TTS.speak(text);}
+/* One global audio controller for read-aloud buttons: play() stops current audio
+   first; the button shows Reading... then Stop, and restores its label when done. */
+function wireSpeak(btn,textFn){
+  var B=typeof btn==="string"?$(btn):btn;if(!B||!B.addEventListener)return;
+  var orig=B.textContent;
+  B.addEventListener("click",function(){
+    var wasSpeaking=TTS.speaking;
+    TTS.stop(); /* one controller: play() always stops current audio first */
+    B.textContent=orig;
+    if(wasSpeaking)return; /* toggle off */
+    B.textContent="Reading\u2026";
+    var ok=false;
+    try{ok=TTS.speak(textFn(),function(){B.textContent=orig;});}catch(e){ok=false;}
+    B.textContent=ok?"\u23F9 Stop":orig;
+  });
+}
 
 /* ---------- data loading ---------- */
 function gz(url,cb){
@@ -362,7 +379,7 @@ function openFix(id){
       store("fixit_my",p);c.closest("li").classList.toggle("done",c.checked);
     });
   });
-  $("rcRead").addEventListener("click",function(){readAloud(recordSpeech(r));});
+  wireSpeak($("rcRead"),function(){return recordSpeech(r);});
   $("rcCopy").addEventListener("click",function(){navigator.clipboard.writeText(recordText(r)).then(function(){alert("Record copied.");});});
   $("rcJson").addEventListener("click",function(){dl(r.id+".json",JSON.stringify(r,null,1),"application/json");});
   $("rcTxt").addEventListener("click",function(){dl(r.id+".txt",recordText(r));});
@@ -501,18 +518,20 @@ $("impFile").addEventListener("change",function(e){
   rd.readAsText(f);
 });
 
-/* ---------- TOUR FIX 2026-10-04: welcome overlay only (no auto-scroll, no spotlight). localStorage jah-tour-seen-fixit ---------- */
+/* ---------- TOUR: centered welcome overlay (no auto-scroll, no spotlight). localStorage jah-tour-seen-fixit ----------
+   Null-safe wiring: a missing element must never kill the other buttons. */
 function tourSeen(){try{return localStorage.getItem("jah-tour-seen-fixit")==="1";}catch(e){return true;}}
 function tourMark(){try{localStorage.setItem("jah-tour-seen-fixit","1");}catch(e){}}
-function tourOpen(){var o=$("tourOver");o.classList.add("open");o.setAttribute("aria-hidden","false");}
-function tourClose(){var o=$("tourOver");o.classList.remove("open");o.setAttribute("aria-hidden","true");tourMark();}
-$("tourOk").addEventListener("click",tourClose);
-$("tourHelp").addEventListener("click",function(){tourClose();var g=$("guidePanel");g.classList.remove("hidden");});
-$("tourOver").addEventListener("click",function(e){if(e.target===$("tourOver"))tourClose();});
-document.addEventListener("keydown",function(e){if(e.key==="Escape"&&$("tourOver").classList.contains("open"))tourClose();});
-/* ? Guide button re-opens the welcome tour */
-$("guideBtn").addEventListener("click",function(){$("guidePanel").classList.add("hidden");tourOpen();});
-$("replayTour").addEventListener("click",function(){$("guidePanel").classList.add("hidden");tourOpen();});
+function tourOpen(){var o=$("tourOver");if(!o)return;o.classList.add("open");o.setAttribute("aria-hidden","false");}
+function tourClose(){var o=$("tourOver");if(o){o.classList.remove("open");o.setAttribute("aria-hidden","true");}tourMark();}
+function wireT(id,fn){var b=$(id);if(b&&fn)b.addEventListener("click",fn);}
+wireT("tourOk",tourClose);
+wireT("tourHelp",function(){tourClose();var g=$("guidePanel");if(g)g.classList.remove("hidden");});
+(function(){var o=$("tourOver");if(o)o.addEventListener("click",function(e){if(e.target===o)tourClose();});})();
+document.addEventListener("keydown",function(e){var o=$("tourOver");if(e.key==="Escape"&&o&&o.classList.contains("open"))tourClose();});
+/* ? Guide button re-opens the welcome guide */
+wireT("guideBtn",function(){var g=$("guidePanel");if(g)g.classList.add("hidden");tourOpen();});
+wireT("replayTour",function(){var g=$("guidePanel");if(g)g.classList.add("hidden");tourOpen();});
 /* first visit: welcome overlay */
 setTimeout(function(){if(!tourSeen())tourOpen();},900);
 

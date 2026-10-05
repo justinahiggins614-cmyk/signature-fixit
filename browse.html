@@ -132,17 +132,25 @@ var speakTimer=null;
 function speakStop(){try{if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(e){}if(speakTimer){clearTimeout(speakTimer);speakTimer=null;}}
 var speakBtn=document.getElementById("best-speak");
 speakBtn.onclick=function(){
+  /* One global controller: stop current audio first. The old code checked
+     speechSynthesis.speaking right after cancel() — still true for a moment —
+     so the click silently did nothing. */
+  var wasSpeaking=false;
+  try{wasSpeaking=!!(window.speechSynthesis&&window.speechSynthesis.speaking);}catch(e){}
   speakStop();
+  var ORIG="\uD83D\uDD0A Read aloud";
+  speakBtn.textContent=ORIG;
+  if(wasSpeaking)return; /* toggle off */
   try{
-    if(!("speechSynthesis" in window)){speakBtn.textContent="No voice on this device";setTimeout(function(){speakBtn.textContent="🔊 Read aloud";},1800);return;}
-    if(window.speechSynthesis.speaking){speakBtn.textContent="🔊 Read aloud";return;}
+    if(!("speechSynthesis" in window)){speakBtn.textContent="No voice on this device";setTimeout(function(){speakBtn.textContent=ORIG;},1800);return;}
     var u=new SpeechSynthesisUtterance(plain);
-    speakBtn.textContent="⏹ Stop";
-    u.onend=function(){speakBtn.textContent="🔊 Read aloud";};
-    u.onerror=function(){speakBtn.textContent="🔊 Read aloud";};
+    speakBtn.textContent="Reading\u2026";
+    u.onstart=function(){speakBtn.textContent="\u23F9 Stop";};
+    u.onend=function(){speakBtn.textContent=ORIG;};
+    u.onerror=function(){speakBtn.textContent=ORIG;};
     window.speechSynthesis.speak(u);
-    speakTimer=setTimeout(function(){speakBtn.textContent="🔊 Read aloud";},30000);
-  }catch(e){speakBtn.textContent="🔊 Read aloud";}
+    speakTimer=setTimeout(function(){speakBtn.textContent=ORIG;},30000);
+  }catch(e){speakBtn.textContent=ORIG;}
 };
 document.getElementById("best-copy").onclick=function(){copyText(dl,this);};
 document.getElementById("best-dl").onclick=function(){download("JAH-FIX-000001-best.txt",dl);};
@@ -187,25 +195,7 @@ document.getElementById("best-dl").onclick=function(){download("JAH-FIX-000001-b
 (function(){
 var SITE="The Signature Mr Fix-It", DESC="the fix-record archive";
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
-/* Real Signature Llama loader — same pattern as the phone book. */
-var LLAMA_BASE="https://justinahiggins614-cmyk.github.io/signature-backend/sigllama/";
-var LLAMA_VOCAB="vocab2.json", LLAMA_BIN="sigllama-v2.bin";
-var net={loading:null,ready:false};
-function llamaEnsure(){
-  if(net.ready) return Promise.resolve(true);
-  if(net.loading) return net.loading;
-  net.loading=new Promise(function(resolve){
-    function fin(ok){net.ready=!!ok;resolve(net.ready);}
-    function boot(){try{
-      if(typeof SigLlama==="undefined"){fin(false);return;}
-      SigLlama.load(LLAMA_BASE,LLAMA_VOCAB,LLAMA_BIN).then(function(){fin(true);},function(){fin(false);});
-    }catch(e){fin(false);}}
-    if(typeof SigLlama!=="undefined"){boot();return;}
-    var s=document.createElement("script");s.src=LLAMA_BASE+"sigllama.js";s.async=true;
-    s.onload=boot;s.onerror=function(){fin(false);};document.head.appendChild(s);
-  });
-  return net.loading;
-}
+/* Archive-grounded answers only — the raw model call that produced garbled text was removed. */
 /* FIND: keyword scan over the page's own archive list links. */
 function findRecords(q){
   var words=String(q).toLowerCase().split(/[^a-z0-9]+/).filter(function(w){return w.length>2;});
@@ -229,34 +219,34 @@ function ask(){
   var q=document.getElementById("jah-askai-q").value.trim();
   var out=document.getElementById("jah-askai-out");
   if(!q){out.innerHTML="<p>Please type a question first.</p>";return;}
-  var found=findRecords(q),html="";
-  if(found.length){
-    html+="<p><b>📎 I found "+found.length+" record"+(found.length>1?"s":"")+" matching your words:</b></p><ul>"+
-      found.map(function(f){return '<li><a href="'+esc(f.h)+'">'+esc(f.t)+"</a></li>";}).join("")+"</ul>";
-  }else{
-    html+="<p>No record titles matched those words — asking the AI anyway.</p>";
-  }
-  html+='<p class="jah-askai-thinking">🤖 thinking…</p>';
-  out.innerHTML=html;
-  var think=out.querySelector(".jah-askai-thinking");
-  llamaEnsure().then(function(ok){
-    if(!ok||typeof SigLlama==="undefined"||!SigLlama.loaded||!SigLlama.loaded()){
-      think.textContent="The AI voice could not load right now — the records above are what matched your words.";return;}
-    var ctx="You are the "+SITE+" archive helper. "+DESC+".\n"+
-      (found.length?("Records matching the question: "+found.map(function(f){return f.t;}).join(" | ")+"\n"):"")+
-      "User: "+q.slice(0,300)+"\nHelper (one to three sentences, plain words):";
-    var done=false;
-    function show(t){
-      if(done) return; done=true;
-      t=String(t||"").trim().replace(/^Helper\s*:\s*/i,"");
-      if(t.length<8||/User\s*:/.test(t)) t="I searched the archive for you — the matching records are listed above.";
-      think.outerHTML='<p class="jah-askai-ans">🤖 '+esc(t)+"</p>";
+  /* Same answer path as the main "Ask Fix-It AI" tab: keyword-score the archive
+     index and answer from real records — never raw model text. */
+  var words=String(q).toLowerCase().split(/[^a-z0-9]+/).filter(function(w){return w.length>2;});
+  var IDX=((window.__FixitDB||{}).idx)||[];
+  var scored=[],i,j;
+  if(!IDX.length){out.innerHTML='<p class="jah-askai-ans">\uD83E\uDD16 The archive index is still loading — try again in a moment.</p>';return;}
+  if(words.length){
+    for(i=0;i<IDX.length;i++){
+      var r=IDX[i],t=String(r[1]||"").toLowerCase(),id=String(r[0]||"").toLowerCase(),f=String(r[2]||"").toLowerCase(),s=0;
+      for(j=0;j<words.length;j++){var w=words[j];if(t.indexOf(w)>=0)s+=2;else if(id.indexOf(w)>=0||f.indexOf(w)>=0)s+=1;}
+      if(s>0)scored.push({id:r[0],title:r[1],field:r[2],s:s});
+      if(scored.length>=400)break;
     }
-    try{
-      SigLlama.generate(ctx,{maxTokens:90,temperature:0.5,topK:40}).then(show,function(){show("");});
-      setTimeout(function(){show("");},25000);
-    }catch(e){show("");}
-  });
+    scored.sort(function(a,b){return b.s-a.s;});
+  }
+  var found=scored.slice(0,5),html="";
+  if(found.length){
+    var top=found[0];
+    html+='<p class="jah-askai-ans">\uD83E\uDD16 <b>ARCHIVE RECORD — '+esc(top.id)+'</b><br>'+esc(top.title)+
+      '<br><span class="fid">'+esc(top.field)+'</span> <a href="index.html?fix='+esc(top.id)+'">Open the full fix \u2192</a></p>';
+    if(found.length>1){
+      html+='<p><b>Also in the archive:</b></p><ul>'+
+        found.slice(1).map(function(x){return '<li><a href="index.html?fix='+esc(x.id)+'">'+esc(x.title)+'</a> <span class="fid">'+esc(x.id)+'</span></li>';}).join("")+"</ul>";
+    }
+  }else{
+    html+='<p class="jah-askai-ans">\uD83E\uDD16 <b>NOT FOUND</b> — no archived fix matches those words closely. Try the search box above, or open the <a href="index.html">Fix Finder</a> and describe the problem in plain words.</p>';
+  }
+  out.innerHTML=html;
 }
 document.getElementById("jah-askai-go").addEventListener("click",ask);
 document.getElementById("jah-askai-q").addEventListener("keydown",function(e){if(e.key==="Enter")ask();});
@@ -292,6 +282,7 @@ function gz(url,cb){
   }).then(function(t){cb(t,null);}).catch(function(e){cb(null,e);});
 }
 var DB={idx:[],fields:[]}, mode="field", rendered={};
+window.__FixitDB=DB; /* shared with the Ask-the-AI box above */
 function link(id,title,field){return '<li><a href="index.html?fix='+esc(id)+'"><b>'+esc(title)+'</b></a><span class="fid">'+esc(id)+' · '+esc(field)+'</span></li>';}
 function buildField(){
   var area=$("listArea"),html="";
