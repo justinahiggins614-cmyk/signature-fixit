@@ -33,11 +33,18 @@ var MALL="https://justinahiggins614-cmyk.github.io/signature-cyber-mega-mall/";
 var DB={api:null,idx:[],fixes:null,fields:[]};
 var myUpFile=null;
 
+/* JAHProfile-aware storage: public = plain localStorage, signed-in = per-profile namespace
+   (mirrors the PS adapter on index.html / browse.html; typeof guard keeps public behavior byte-identical) */
+var PS=(typeof JAHProfile!=='undefined')?JAHProfile.store:localStorage;
+function psGet(k){try{return (typeof PS.get==="function")?PS.get(k):PS.getItem(k);}catch(e){return null;}}
+function psSet(k,v){try{if(typeof PS.set==="function")PS.set(k,v);else PS.setItem(k,v);}catch(e){}}
+function psDel(k){try{if(typeof PS.remove==="function")PS.remove(k);else PS.removeItem(k);}catch(e){}}
+
 /* ---------- utilities ---------- */
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function tokens(s){return (s||"").toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(function(w){return w.length>2;});}
-function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||"null");localStorage.setItem(k,JSON.stringify(v));}
+function store(k,v){try{if(v===undefined)return JSON.parse(psGet(k)||"null");psSet(k,JSON.stringify(v));}
 catch(e){if(e&&/QuotaExceeded/i.test(e.name||"")){window.STORE_FULL=true;showStoreWarn();}return null;}}
 function showStoreWarn(){var w=$("storeWarn");if(w)w.classList.remove("hidden");}
 function dl(name,text,type){var b=new Blob([text],{type:type||"text/plain"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},800);}
@@ -45,7 +52,7 @@ function dl(name,text,type){var b=new Blob([text],{type:type||"text/plain"});var
 /* ---------- theme ---------- */
 $("themeBtn").addEventListener("click",function(){
   var d=document.documentElement.getAttribute("data-theme")==="dark";
-  try{localStorage.setItem("jah-theme",d?"light":"dark");}catch(e){}
+  psSet("jah-theme",d?"light":"dark");
   document.documentElement.setAttribute("data-theme",d?"":"dark");
 });
 
@@ -520,7 +527,7 @@ function renderMine(){
   el.innerHTML=h+"</ul>";
 }
 $("expMy").addEventListener("click",function(){dl("fixit-my-data.json",JSON.stringify(store("fixit_my")||{},null,1),"application/json");});
-$("clrMy").addEventListener("click",function(){if(confirm("Clear all local fix progress on this device?")){try{localStorage.removeItem("fixit_my");}catch(e){}renderMine();}});
+$("clrMy").addEventListener("click",function(){if(confirm("Clear all local fix progress on this device?")){psDel("fixit_my");renderMine();}});
 $("impBtn").addEventListener("click",function(){$("impFile").click();});
 $("impFile").addEventListener("change",function(e){
   var f=e.target.files[0];if(!f)return;
@@ -544,8 +551,8 @@ $("impFile").addEventListener("change",function(e){
 
 /* ---------- TOUR: centered welcome overlay (no auto-scroll, no spotlight). localStorage jah-tour-seen-fixit ----------
    Null-safe wiring: a missing element must never kill the other buttons. */
-function tourSeen(){try{return localStorage.getItem("jah-tour-seen-fixit")==="1";}catch(e){return true;}}
-function tourMark(){try{localStorage.setItem("jah-tour-seen-fixit","1");}catch(e){}}
+function tourSeen(){return psGet("jah-tour-seen-fixit")==="1";}
+function tourMark(){psSet("jah-tour-seen-fixit","1");}
 function tourOpen(){var o=$("tourOver");if(!o)return;o.classList.add("open");o.setAttribute("aria-hidden","false");}
 function tourClose(){var o=$("tourOver");if(o){o.classList.remove("open");o.setAttribute("aria-hidden","true");}tourMark();}
 function wireT(id,fn){var b=$(id);if(b&&fn)b.addEventListener("click",fn);}
