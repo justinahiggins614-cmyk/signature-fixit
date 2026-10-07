@@ -1,3 +1,6 @@
+
+function jahConfirm(msg,cb){var o=document.getElementById('jah-confirm');if(o)o.remove();o=document.createElement('div');o.id='jah-confirm';o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';var box=document.createElement('div');box.style.cssText='background:#1c2940;border:1px solid #35e0ff;border-radius:12px;padding:20px;max-width:92vw;color:#fff';var p=document.createElement('p');p.style.margin='0 0 16px';p.textContent=String(msg);var row=document.createElement('div');row.style.cssText='display:flex;gap:10px;justify-content:flex-end';var no=document.createElement('button');no.textContent='Cancel';no.style.cssText='padding:10px 18px;border-radius:8px;border:1px solid #666;background:#222;color:#fff;font-size:1em';var yes=document.createElement('button');yes.textContent='Confirm';yes.style.cssText='padding:10px 18px;border-radius:8px;border:none;background:#35e0ff;color:#000;font-weight:bold;font-size:1em';no.onclick=function(){o.remove();cb(false)};yes.onclick=function(){o.remove();cb(true)};row.appendChild(no);row.appendChild(yes);box.appendChild(p);box.appendChild(row);o.appendChild(box);document.body.appendChild(o);yes.focus()}
+function jahToast(m){var t=document.getElementById('jah-toast');if(!t){t=document.createElement('div');t.id='jah-toast';document.body.appendChild(t)}t.textContent=String(m);t.style.display='block';clearTimeout(t._x);t._x=setTimeout(function(){t.style.display='none'},3000)}
 /* ==== JAH global read-aloud controller (one per page): no stacked voices, no orphan audio ==== */
 (function(){
 if(window.__JAHREAD)return;
@@ -361,10 +364,10 @@ function openFix(id){
     });
   });
   wireSpeak($("rcRead"),function(){return recordSpeech(r);});
-  $("rcCopy").addEventListener("click",function(){navigator.clipboard.writeText(recordText(r)).then(function(){alert("Record copied.");});});
+  $("rcCopy").addEventListener("click",function(){navigator.clipboard.writeText(recordText(r)).then(function(){jahToast("Record copied.");});});
   $("rcJson").addEventListener("click",function(){dl(r.id+".json",JSON.stringify(r,null,1),"application/json");});
   $("rcTxt").addEventListener("click",function(){dl(r.id+".txt",recordText(r));});
-  $("rcDone").addEventListener("click",function(){markDone(id);alert("Marked as fixed. Nice work! 🔧");});
+  $("rcDone").addEventListener("click",function(){markDone(id);jahToast("Marked as fixed. Nice work! 🔧");});
   sec.scrollIntoView({behavior:"smooth"});
   markAttempt(id);
 }
@@ -477,7 +480,7 @@ function renderMine(){
   el.innerHTML=h+"</ul>";
 }
 $("expMy").addEventListener("click",function(){dl("fixit-my-data.json",JSON.stringify(store("fixit_my")||{},null,1),"application/json");});
-$("clrMy").addEventListener("click",function(){if(confirm("Clear all local fix progress on this device?")){psDel("fixit_my");renderMine();}});
+$("clrMy").addEventListener("click",function(){jahConfirm("Clear all local fix progress on this device?",function(ok){if(ok){psDel("fixit_my");renderMine();}});});
 $("impBtn").addEventListener("click",function(){$("impFile").click();});
 $("impFile").addEventListener("change",function(e){
   var f=e.target.files[0];if(!f)return;
@@ -491,11 +494,11 @@ $("impFile").addEventListener("change",function(e){
       var p=store("fixit_my")||{};
       ids.forEach(function(k){p[k]=data[k];});
       store("fixit_my",p);renderMine();
-      alert("Imported "+ids.length+" fix record"+(ids.length>1?"s":"")+" into My Fixes.");
-    }catch(err){alert("Couldn't import that file — it doesn't look like a Mr Fix-It backup ("+err.message+"). Export creates a valid one.");}
+      jahToast("Imported "+ids.length+" fix record"+(ids.length>1?"s":"")+" into My Fixes.");
+    }catch(err){jahToast("Couldn't import that file — it doesn't look like a Mr Fix-It backup ("+err.message+"). Export creates a valid one.");}
     $("impFile").value="";
   };
-  rd.onerror=function(){alert("Couldn't read that file — it may be damaged. Try exporting a fresh backup first.");};
+  rd.onerror=function(){jahToast("Couldn't read that file — it may be damaged. Try exporting a fresh backup first.");};
   rd.readAsText(f);
 });
 
