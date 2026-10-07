@@ -75,43 +75,39 @@ function showTab(name){
 }
 var bb=$("backBtn");if(bb)bb.addEventListener("click",function(){location.href="browse.html";});
 
-/* ---------- tiered TTS: speechSynthesis -> Google TTS hosts ---------- */
-var TTS={speaking:false,
+/* ---------- tiered TTS: Audio-only (ResponsiveVoice -> Google TTS hosts).
+   speechSynthesis is NEVER used for playback: on Android/Facebook WebView it
+   exists but fails SILENTLY, which made read-aloud silently dead. Plain
+   <audio> elements only; one global controller via __JAHREAD. ---------- */
+var TTS_TIERS=[
+  function(t){return "https://code.responsivevoice.org/getvoice.php?t="+encodeURIComponent(t)+"&tl=en-US&sv=g2&vn=&pitch=0.5&rate=0.95";},
+  function(t){return "https://translate.google.com/translate_tts?ie=UTF-8&q="+encodeURIComponent(t)+"&tl=en&client=tw-ob";},
+  function(t){return "https://translate.googleapis.com/translate_tts?ie=UTF-8&q="+encodeURIComponent(t)+"&tl=en&client=tw-ob";}
+];
+var TTS={speaking:false,stopped:false,
   chunk:function(t){var out=[],s=String(t);while(s.length>200){var i=s.lastIndexOf(". ",200);if(i<0)i=s.lastIndexOf(" ",200);if(i<0)i=200;out.push(s.slice(0,i+1));s=s.slice(i+1);}if(s.trim())out.push(s);return out;},
   speak:function(text,onend){
     if(window.__JAHREAD&&!window.__JAHREAD.playGuard("speak"))return false;
     this.stop();
-    var chunks=this.chunk(text),self=this,ci=0;
-    self.speaking=true;
-    function done(){ci++;if(ci<chunks.length&&self.speaking){play();}else{self.speaking=false;if(onend)onend();}}
+    var chunks=this.chunk(text),self=this,ci=0,hi=0,aud=null;
+    self.speaking=true;self.stopped=false;
+    function done(){ci++;hi=0;if(ci<chunks.length&&self.speaking&&!self.stopped){play();}else{self.speaking=false;if(onend)onend();}}
     function play(){
-      var u=new SpeechSynthesisUtterance(chunks[ci]);
-      u.lang="en-US";u.rate=1;
+      if(self.stopped){self.speaking=false;return;}
+      if(hi>=TTS_TIERS.length){self.speaking=false;if(onend)onend();return;}
+      try{if(aud){try{aud.pause();}catch(e){}}}catch(e){}
+      aud=new Audio(); /* __JAHREAD wraps Audio: registered, one controller */
+      aud.onended=done;
+      aud.onerror=function(){hi++;play();};
       try{
-        var vs=speechSynthesis.getVoices().filter(function(v){return v.lang&&v.lang.toLowerCase().indexOf("en-us")===0;});
-        var fem=vs.filter(function(v){return /female|samantha|zira|aria|jenny/i.test(v.name);});
-        if(fem.length)u.voice=fem[0];else if(vs.length)u.voice=vs[0];
-      }catch(e){}
-      var played=false;
-      u.onend=function(){played=true;done();};
-      u.onerror=function(){if(!played)gTTS();};
-      try{speechSynthesis.speak(u);}catch(e){gTTS();return;}
-      setTimeout(function(){if(!played&&self.speaking){try{speechSynthesis.cancel();}catch(e){} gTTS();}},4000);
-    }
-    var hosts=["https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=",
-               "https://translate.google.co.uk/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q="];
-    var hi=0,aud=null;
-    function gTTS(){
-      if(hi>=hosts.length){self.speaking=false;if(onend)onend();return;}
-      try{if(aud){aud.pause();} }catch(e){}
-      aud=new Audio(hosts[hi]+encodeURIComponent(chunks[ci]));
-      aud.onended=done;aud.onerror=function(){hi++;gTTS();};
-      var p=aud.play();if(p&&p.catch)p.catch(function(){hi++;gTTS();});
+        aud.src=TTS_TIERS[hi](chunks[ci]);
+        var p=aud.play();if(p&&p.catch)p.catch(function(){hi++;play();});
+      }catch(e){hi++;play();}
     }
     play();
     return true;
   },
-  stop:function(){try{if(window.__JAHREAD)window.__JAHREAD.stopAll();}catch(e){}this.speaking=false;try{speechSynthesis.cancel();}catch(e){}}
+  stop:function(){this.stopped=true;this.speaking=false;try{if(window.__JAHREAD)window.__JAHREAD.stopAll();}catch(e){}}
 };
 function readAloud(text){if(window.__JAHREAD&&!window.__JAHREAD.playGuard("readAloud"))return;TTS.speak(text);}
 /* One global audio controller for read-aloud buttons: play() stops current audio
@@ -282,6 +278,13 @@ function aiReviewNote(){
 $("goFix").addEventListener("click",function(){
   var text=probEl.value.trim();
   if(text.length<4){$("fixResult").innerHTML='<div class="card"><p>Describe the problem first — a few words is enough.</p></div>';return;}
+  if(!DB.fixes){
+    /* archive data failed to load (offline / fetch blocked): say so plainly,
+       with a retry that reloads the data then re-runs the search */
+    $("fixResult").innerHTML='<div class="card"><p><b>\u26A0 The fix archive couldn\u2019t be loaded</b> \u2014 no connection to the archive data. Check your connection, then tap Retry.</p><div class="toolbar"><button class="btn" id="fixRetry">\u21BB Retry loading the archive</button></div></div>';
+    $("fixRetry").addEventListener("click",function(){window.fixitReload(function(){$("goFix").click();});});
+    return;
+  }
   var det=probEl._det||detectField(text);
   var field=$("fieldOverride").value||det.field;
   var matches=findFixes(text,3).filter(function(r){return !field||r.field===field;});
@@ -301,7 +304,7 @@ $("goFix").addEventListener("click",function(){
   }else{
     html+='<p><span class="badge b-med">GENERATED GUIDANCE</span> No archived record matches closely — this is general guidance for <b>'+esc(field||"general repair")+"</b>, not an archive record.</p>";
     html+=genericGuide(field);
-    html+='<p class="note">Tip: try the Archive tab — '+DB.fixes.length+' records and counting. Or use the web search below.</p>';
+    html+='<p class="note">Tip: try the Archive tab — '+(DB.fixes?DB.fixes.length:0)+' records and counting. Or use the web search below.</p>';
     html+='<div class="toolbar"><button class="btn ghost small" onclick="webSearch(\''+esc(text.replace(/'/g,""))+'\')">🌐 Search the web for this fix</button></div>';
   }
   html+='<p class="note">Fix records below are generated guidance, not certified professional advice — check the safety banner on each record.</p>';
@@ -520,7 +523,7 @@ wireT("replayTour",function(){var g=$("guidePanel");if(g)g.classList.add("hidden
 setTimeout(function(){if(!tourSeen())tourOpen();},900);
 
 /* ---------- init / deep links ---------- */
-window.openFix=openFix;window.loadCamSteps=loadCamSteps;window.webSearch=webSearch;
+window.openFix=openFix;window.loadCamSteps=loadCamSteps;window.webSearch=webSearch;window.fixitReload=loadAll;
 loadAll(function(){
   var m=/[?&]fix=(JAH-FIX-\d+)/i.exec(location.search);
   if(m&&m[1]){openFix(m[1].toUpperCase());}

@@ -130,29 +130,35 @@ var plain="Best of the Best — Dead outlet, no power at all, JAH-FIX-000001. Th
 var dl="THE SIGNATURE MR FIX-IT — BEST OF THE BEST\nDead outlet — no power at all — JAH-FIX-000001 (fix 1)\nElectrical field — JAH-FIXFIELD-001\n\nWHY THIS IS THE BEST\nThe first fix ever filed — it set the Fix-It format: symptoms, diagnosis, ranked solutions with difficulty and safety rating, and parts.\n\nSYMPTOMS\n- Outlet delivers no power to a lamp you know works\n- The breaker does not look tripped\n- Nearby outlets on other walls work fine\n\nDIAGNOSIS\n1. Confirm the outlet is really dead with a known-good lamp\n2. At the panel, flip the suspect breaker fully OFF then back ON\n3. Press RESET on any GFCI outlet on the same circuit\n4. With the breaker OFF, remove the cover plate and look for loose or scorched wires\n\nSOLUTION (ranked #1 — DIY_FIX)\nReset protection devices and reseat the outlet wiring.\n\nSAFETY\nGenerated guidance, not certified professional advice. HIGH-safety repairs go to a licensed professional.\n\nFull fix: https://justinahiggins614-cmyk.github.io/signature-fixit/index.html?fix=JAH-FIX-000001";
 function copyText(t,btn){function done(ok){var o=btn.textContent;btn.textContent=ok?"Copied ✓":"Copy failed";setTimeout(function(){btn.textContent=o;},1500);}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){done(true);},function(){done(false);});}else{var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done(true);}catch(e){done(false);}document.body.removeChild(ta);}}
 function download(name,text){try{var url=URL.createObjectURL(new Blob([text],{type:"text/plain"}));var a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);try{URL.revokeObjectURL(url);}catch(e){}},800);}catch(e){}}
-var speakTimer=null;
-function speakStop(){try{if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(e){}if(speakTimer){clearTimeout(speakTimer);speakTimer=null;}}
+var speakTimer=null,speakAud=null,speakingNow=false;
+var TTS_TIERS=[
+ function(t){return "https://code.responsivevoice.org/getvoice.php?t="+encodeURIComponent(t)+"&tl=en-US&sv=g2&vn=&pitch=0.5&rate=0.95";},
+ function(t){return "https://translate.google.com/translate_tts?ie=UTF-8&q="+encodeURIComponent(t)+"&tl=en&client=tw-ob";},
+ function(t){return "https://translate.googleapis.com/translate_tts?ie=UTF-8&q="+encodeURIComponent(t)+"&tl=en&client=tw-ob"}];
+function chunkText(t){var out=[],s=String(t);while(s.length>200){var i=s.lastIndexOf(". ",200);if(i<0)i=s.lastIndexOf(" ",200);if(i<0)i=200;out.push(s.slice(0,i+1));s=s.slice(i+1);}if(s.trim())out.push(s);return out;}
+function speakStop(){speakingNow=false;try{if(speakAud){speakAud.pause();speakAud=null;}}catch(e){}if(speakTimer){clearTimeout(speakTimer);speakTimer=null;}}
 var speakBtn=document.getElementById("best-speak");
 speakBtn.onclick=function(){
-  /* One global controller: stop current audio first. The old code checked
-     speechSynthesis.speaking right after cancel() — still true for a moment —
-     so the click silently did nothing. */
-  var wasSpeaking=false;
-  try{wasSpeaking=!!(window.speechSynthesis&&window.speechSynthesis.speaking);}catch(e){}
-  speakStop();
+  /* Audio-only tiered playback: speechSynthesis is NEVER used — it fails
+     silently on Android/Facebook WebView, which made read-aloud silently dead. */
   var ORIG="\uD83D\uDD0A Read aloud";
-  speakBtn.textContent=ORIG;
-  if(wasSpeaking)return; /* toggle off */
-  try{
-    if(!("speechSynthesis" in window)){speakBtn.textContent="No voice on this device";setTimeout(function(){speakBtn.textContent=ORIG;},1800);return;}
-    var u=new SpeechSynthesisUtterance(plain);
-    speakBtn.textContent="Reading\u2026";
-    u.onstart=function(){speakBtn.textContent="\u23F9 Stop";};
-    u.onend=function(){speakBtn.textContent=ORIG;};
-    u.onerror=function(){speakBtn.textContent=ORIG;};
-    window.speechSynthesis.speak(u);
-    speakTimer=setTimeout(function(){speakBtn.textContent=ORIG;},30000);
-  }catch(e){speakBtn.textContent=ORIG;}
+  if(speakingNow){speakStop();speakBtn.textContent=ORIG;return;} /* toggle off */
+  speakStop();
+  var chunks=chunkText(plain),ci=0,hi=0;
+  speakingNow=true;
+  speakBtn.textContent="\u23F9 Stop";
+  function done(){ci++;hi=0;if(ci<chunks.length&&speakingNow){play();}else{speakStop();speakBtn.textContent=ORIG;}}
+  function play(){
+    if(!speakingNow)return;
+    if(hi>=TTS_TIERS.length){speakStop();speakBtn.textContent=ORIG;return;}
+    try{if(speakAud){try{speakAud.pause();}catch(e){}}}catch(e){}
+    speakAud=new Audio();
+    speakAud.onended=done;
+    speakAud.onerror=function(){hi++;play();};
+    try{speakAud.src=TTS_TIERS[hi](chunks[ci]);var p=speakAud.play();if(p&&p.catch)p.catch(function(){hi++;play();});}
+    catch(e){hi++;play();}
+  }
+  play();
 };
 document.getElementById("best-copy").onclick=function(){copyText(dl,this);};
 document.getElementById("best-dl").onclick=function(){download("JAH-FIX-000001-best.txt",dl);};
